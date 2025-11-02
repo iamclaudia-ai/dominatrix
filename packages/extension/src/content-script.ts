@@ -4,12 +4,39 @@
  */
 
 import type { DOMNode, StorageData, ConsoleLog } from './types.js';
+import { Interpreter, parse } from '@mariozechner/jailjs';
 
 class DominatrixContentScript {
   private uidCounter = 0;
   private uidMap = new Map<string, Element>();
+  private interpreter: Interpreter;
 
   constructor() {
+    // Initialize JailJS interpreter with access to safe globals
+    this.interpreter = new Interpreter(
+      {
+        // Provide access to DOM APIs
+        document,
+        window,
+        console,
+        // Allow common utility functions
+        setTimeout,
+        setInterval,
+        clearTimeout,
+        clearInterval,
+        fetch,
+        // JSON utilities
+        JSON,
+        // Math utilities
+        Math,
+        Date,
+      },
+      {
+        // Timeout protection: max 1 million operations (prevents infinite loops)
+        maxOps: 1000000,
+      }
+    );
+
     this.init();
   }
 
@@ -250,18 +277,44 @@ class DominatrixContentScript {
   }
 
   /**
-   * Execute arbitrary JavaScript in page context
+   * Execute arbitrary JavaScript in page context using JailJS
+   * This bypasses CSP restrictions by using AST interpretation instead of eval()
    */
   private executeScript(script: string): any {
-    const func = new Function(script);
-    return func();
+    try {
+      // First try JailJS (works even with strict CSP)
+      const ast = parse(script);
+      return this.interpreter.evaluate(ast);
+    } catch (jailError) {
+      // Fallback to native execution for performance (if CSP allows it)
+      try {
+        const func = new Function(script);
+        return func();
+      } catch (cspError) {
+        // If both fail, report the JailJS error (more informative)
+        throw new Error(`Script execution failed: ${jailError instanceof Error ? jailError.message : 'Unknown error'}`);
+      }
+    }
   }
 
   /**
-   * Evaluate expression and return result
+   * Evaluate expression and return result using JailJS
+   * This bypasses CSP restrictions by using AST interpretation instead of eval()
    */
   private evaluateExpression(expression: string): any {
-    return eval(expression);
+    try {
+      // First try JailJS (works even with strict CSP)
+      const ast = parse(expression);
+      return this.interpreter.evaluate(ast);
+    } catch (jailError) {
+      // Fallback to eval for performance (if CSP allows it)
+      try {
+        return eval(expression);
+      } catch (cspError) {
+        // If both fail, report the JailJS error (more informative)
+        throw new Error(`Expression evaluation failed: ${jailError instanceof Error ? jailError.message : 'Unknown error'}`);
+      }
+    }
   }
 
   /**

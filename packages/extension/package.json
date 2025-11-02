@@ -14,5 +14,8 @@
   "devDependencies": {
     "@types/chrome": "^0.0.278",
     "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "@mariozechner/jailjs": "^0.1.1"
   }
 }
