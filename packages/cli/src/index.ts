@@ -113,6 +113,7 @@ program
 program
   .command('snapshot')
   .description('Get DOM snapshot of current page')
+  .option('-t, --tab-id <id>', 'Tab ID to target (required for multi-profile)')
   .option('-v, --verbose', 'Include all node details')
   .option('--pretty', 'Output formatted text instead of JSON')
   .action(async (options) => {
@@ -120,7 +121,7 @@ program
     const spinner = ora('Building DOM snapshot...').start();
 
     try {
-      const snapshot = await client.sendCommand('snapshot');
+      const snapshot = await client.sendCommand('snapshot', { tabId: options.tabId ? parseInt(options.tabId) : undefined });
       spinner.stop();
 
       if (options.pretty) {
@@ -159,13 +160,14 @@ function printNode(node: any, depth: number) {
 program
   .command('exec <script>')
   .description('Execute JavaScript in page context')
+  .option('-t, --tab-id <id>', 'Tab ID to target (required for multi-profile)')
   .option('--pretty', 'Output formatted text instead of JSON')
   .action(async (script, options) => {
     await ensureConnected();
     const spinner = ora('Executing script...').start();
 
     try {
-      const result = await client.sendCommand('executeScript', { script });
+      const result = await client.sendCommand('executeScript', { script, tabId: options.tabId ? parseInt(options.tabId) : undefined });
       spinner.stop();
 
       console.log(chalk.bold('\n✨ Script Result:\n'));
@@ -182,13 +184,14 @@ program
 program
   .command('eval <expression>')
   .description('Evaluate JavaScript expression and return result')
+  .option('-t, --tab-id <id>', 'Tab ID to target (required for multi-profile)')
   .option('--pretty', 'Output formatted text instead of JSON')
   .action(async (expression, options) => {
     await ensureConnected();
     const spinner = ora('Evaluating expression...').start();
 
     try {
-      const result = await client.sendCommand('evaluateExpression', { expression });
+      const result = await client.sendCommand('evaluateExpression', { expression, tabId: options.tabId ? parseInt(options.tabId) : undefined });
       spinner.stop();
 
       console.log(chalk.bold('\n💎 Result:\n'));
@@ -208,6 +211,7 @@ program
 program
   .command('screenshot')
   .description('Capture screenshot of current page')
+  .option('-t, --tab-id <id>', 'Tab ID to target (required for multi-profile)')
   .option('-f, --full', 'Capture full page')
   .option('--save <path>', 'Save to file')
   .action(async (options) => {
@@ -215,7 +219,7 @@ program
     const spinner = ora('Capturing screenshot...').start();
 
     try {
-      const dataUrl = await client.sendCommand('screenshot', { fullPage: options.full });
+      const dataUrl = await client.sendCommand('screenshot', { fullPage: options.full, tabId: options.tabId ? parseInt(options.tabId) : undefined });
       spinner.succeed(chalk.green('Screenshot captured'));
 
       if (options.save) {
@@ -242,9 +246,10 @@ program
 program
   .command('console')
   .description('Show console messages')
+  .option('-t, --tab-id <id>', 'Tab ID to target (required for multi-profile)')
   .option('--pretty', 'Output formatted text instead of JSON')
   .option('-l, --limit <number>', 'Limit number of logs shown', '50')
-  .option('-t, --type <type>', 'Filter by log type (log, info, warn, error, debug)')
+  .option('--type <type>', 'Filter by log type (log, info, warn, error, debug)')
   .option('-f, --filter <keyword>', 'Filter messages containing keyword')
   .option('--errors', 'Show only errors')
   .option('--warnings', 'Show only warnings')
@@ -253,7 +258,7 @@ program
     const spinner = ora('Fetching console logs...').start();
 
     try {
-      let logs = await client.sendCommand('getConsoleLogs');
+      let logs = await client.sendCommand('getConsoleLogs', { tabId: options.tabId ? parseInt(options.tabId) : undefined });
       spinner.stop();
 
       // Apply filters
@@ -334,9 +339,10 @@ function getLogIcon(type: string): string {
 program
   .command('network')
   .description('Show network requests')
+  .option('-t, --tab-id <id>', 'Tab ID to target (required for multi-profile)')
   .option('--pretty', 'Output formatted text instead of JSON')
   .option('-l, --limit <number>', 'Limit number of requests shown', '20')
-  .option('-t, --type <type>', 'Filter by resource type (xhr, fetch, script, stylesheet, image, etc.)')
+  .option('--type <type>', 'Filter by resource type (xhr, fetch, script, stylesheet, image, etc.)')
   .option('-s, --status <code>', 'Filter by status code (200, 404, etc.)')
   .option('-f, --filter <keyword>', 'Filter URLs containing keyword')
   .option('--failed', 'Show only failed requests (4xx, 5xx)')
@@ -345,7 +351,7 @@ program
     const spinner = ora('Fetching network requests...').start();
 
     try {
-      let requests = await client.sendCommand('listNetworkRequests');
+      let requests = await client.sendCommand('listNetworkRequests', { tabId: options.tabId ? parseInt(options.tabId) : undefined });
       spinner.stop();
 
       // Apply filters
@@ -427,13 +433,14 @@ program
 program
   .command('storage')
   .description('Show localStorage and sessionStorage')
+  .option('-t, --tab-id <id>', 'Tab ID to target (required for multi-profile)')
   .option('--pretty', 'Output formatted text instead of JSON')
   .action(async (options) => {
     await ensureConnected();
     const spinner = ora('Fetching storage...').start();
 
     try {
-      const storage = await client.sendCommand('getStorage');
+      const storage = await client.sendCommand('getStorage', { tabId: options.tabId ? parseInt(options.tabId) : undefined });
       spinner.stop();
 
       if (options.pretty) {
@@ -462,13 +469,14 @@ program
 program
   .command('cookies')
   .description('Show cookies for current page')
+  .option('-t, --tab-id <id>', 'Tab ID to target (required for multi-profile)')
   .option('--pretty', 'Output formatted text instead of JSON')
   .action(async (options) => {
     await ensureConnected();
     const spinner = ora('Fetching cookies...').start();
 
     try {
-      const cookies = await client.sendCommand('getCookies');
+      const cookies = await client.sendCommand('getCookies', { tabId: options.tabId ? parseInt(options.tabId) : undefined });
       spinner.stop();
 
       if (options.pretty) {
@@ -498,12 +506,13 @@ program
 program
   .command('navigate <url>')
   .description('Navigate to URL')
-  .action(async (url) => {
+  .option('-p, --profile <email>', 'Profile to navigate in (required when multiple profiles connected)')
+  .action(async (url, options) => {
     await ensureConnected();
     const spinner = ora(`Navigating to ${url}...`).start();
 
     try {
-      await client.sendCommand('navigate', { url });
+      await client.sendCommand('navigate', { url, profileId: options.profile });
       spinner.succeed(chalk.green(`Navigated to ${url}`));
     } catch (error) {
       spinner.fail(chalk.red('Navigation failed'));
@@ -520,13 +529,14 @@ program
 program
   .command('html [selector]')
   .description('Get HTML of element or whole page')
+  .option('-t, --tab-id <id>', 'Tab ID to target (required for multi-profile)')
   .option('--pretty', 'Output formatted text instead of JSON')
   .action(async (selector, options) => {
     await ensureConnected();
     const spinner = ora('Fetching HTML...').start();
 
     try {
-      const html = await client.sendCommand('getHTML', { selector });
+      const html = await client.sendCommand('getHTML', { selector, tabId: options.tabId ? parseInt(options.tabId) : undefined });
       spinner.stop();
 
       if (options.pretty) {

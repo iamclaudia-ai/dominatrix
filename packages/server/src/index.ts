@@ -109,22 +109,26 @@ class DominatrixServer {
   }
 
   private async handleCliCommand(message: any, cliClient: Client) {
-    console.log(`📥 CLI Command: ${message.action}${message.profileId ? ` (profile: ${message.profileId})` : ''}`);
+    // Extract profileId and tabId from either top-level or payload
+    const profileId = message.profileId || message.payload?.profileId;
+    const tabId = message.tabId || message.payload?.tabId;
+
+    console.log(`📥 CLI Command: ${message.action}${profileId ? ` (profile: ${profileId})` : ''}`);
 
     // Special handling for listTabs - query ALL profiles if no specific profile requested
-    if (message.action === 'listTabs' && !message.profileId) {
+    if (message.action === 'listTabs' && !profileId) {
       await this.handleListAllTabs(message, cliClient);
       return;
     }
 
     // Find an extension client to handle this command
-    const extensionClient = this.findExtensionClient(message.tabId, message.profileId);
+    const extensionClient = this.findExtensionClient(tabId, profileId);
 
     if (!extensionClient) {
       this.sendError(
         cliClient.ws,
-        'No browser extension connected' + (message.profileId ? ` for profile ${message.profileId}` : ''),
-        { command: message.action, profileId: message.profileId }
+        'No browser extension connected' + (profileId ? ` for profile ${profileId}` : ''),
+        { command: message.action, profileId }
       );
       return;
     }
@@ -286,7 +290,10 @@ class DominatrixServer {
 
     // If profileId specified, find that specific profile
     if (profileId) {
-      const client = extensionClients.find(c => c.profile?.instanceId === profileId);
+      // Match against either instanceId or profileName (email)
+      const client = extensionClients.find(c =>
+        c.profile?.instanceId === profileId || c.profile?.profileName === profileId
+      );
       if (client) return client;
     }
 
