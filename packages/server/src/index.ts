@@ -9,10 +9,17 @@ import { WebSocketServer, WebSocket } from 'ws';
 const PORT = 9222;
 const HOST = 'localhost';
 
+interface ProfileInfo {
+  extensionId: string;
+  instanceId: string;
+  profileName?: string;
+}
+
 interface Client {
   ws: WebSocket;
   type: 'extension' | 'cli';
   id: string;
+  profile?: ProfileInfo;  // Profile info for extension clients
   tabId?: number;
 }
 
@@ -67,7 +74,7 @@ class DominatrixServer {
         } else if (message.type === 'response') {
           this.handleResponse(message);
         } else if (message.type === 'event' && client.type === 'extension') {
-          this.handleEvent(message);
+          this.handleEvent(message, client);
         }
       } catch (error) {
         console.error('Error handling message:', error);
@@ -97,18 +104,23 @@ class DominatrixServer {
   }
 
   private async handleCliCommand(message: any, cliClient: Client) {
-    console.log(`📥 CLI Command: ${message.action}`);
+    console.log(`📥 CLI Command: ${message.action}${message.profileId ? ` (profile: ${message.profileId})` : ''}`);
 
     // Find an extension client to handle this command
-    const extensionClient = this.findExtensionClient(message.tabId);
+    const extensionClient = this.findExtensionClient(message.tabId, message.profileId);
 
     if (!extensionClient) {
       this.sendError(
         cliClient.ws,
-        'No browser extension connected',
-        { command: message.action }
+        'No browser extension connected' + (message.profileId ? ` for profile ${message.profileId}` : ''),
+        { command: message.action, profileId: message.profileId }
       );
       return;
+    }
+
+    // Log which profile is handling this
+    if (extensionClient.profile) {
+      console.log(`   → Routing to: ${extensionClient.profile.profileName || extensionClient.profile.instanceId}`);
     }
 
     // Forward command to extension
@@ -130,8 +142,14 @@ class DominatrixServer {
     }
   }
 
-  private handleEvent(message: any) {
+  private handleEvent(message: any, extensionClient: Client) {
     console.log(`📢 Event: ${message.event}`);
+
+    // If this is a 'connected' event, store the profile info
+    if (message.event === 'connected' && message.data?.profile) {
+      extensionClient.profile = message.data.profile;
+      console.log(`✨ Extension profile: ${extensionClient.profile.profileName || extensionClient.profile.instanceId}`);
+    }
 
     // Broadcast events to all CLI clients
     for (const client of this.clients.values()) {
@@ -141,15 +159,56 @@ class DominatrixServer {
     }
   }
 
-  private findExtensionClient(tabId?: number): Client | undefined {
-    // For now, just return the first extension client
-    // TODO: Implement proper tab routing
-    for (const client of this.clients.values()) {
-      if (client.type === 'extension') {
-        return client;
+  private findExtensionClient(tabId?: number, profileId?: string): Client | undefined {
+    const extensionClients = Array.from(this.clients.values()).filter(c => c.type === 'extension');
+
+    // If no extension clients, return undefined
+    if (extensionClients.length === 0) return undefined;
+
+    // If only one extension client, use it
+    if (extensionClients.length === 1) return extensionClients[0];
+
+    // If profileId specified, find that specific profile
+    if (profileId) {
+      const client = extensionClients.find(c => c.profile?.instanceId === profileId);
+      if (client) return client;
+    }
+
+    // If tabId specified, we need to query all extensions for that tab
+    // For now, just return the first extension
+    // TODO: Implement tab ownership tracking
+    return extensionClients[0];
+  }
+
+  /**
+   * List all tabs across all connected extension instances
+   */
+  private async listAllTabs(): Promise<any[]> {
+    const allTabs: any[] = [];
+    const extensionClients = Array.from(this.clients.values()).filter(c => c.type === 'extension');
+
+    // Query each extension for its tabs
+    for (const client of extensionClients) {
+      try {
+        // Send listTabs command to this extension
+        const requestId = crypto.randomUUID();
+        const message = {
+          id: requestId,
+          type: 'command',
+          action: 'listTabs',
+          timestamp: Date.now(),
+        };
+
+        client.ws.send(JSON.stringify(message));
+
+        // Wait for response (handled by handleResponse)
+        // For now, we'll collect tabs synchronously
+      } catch (error) {
+        console.error(`Failed to get tabs from profile ${client.profile?.profileName}:`, error);
       }
     }
-    return undefined;
+
+    return allTabs;
   }
 
   private sendError(ws: WebSocket, error: string, details?: any) {

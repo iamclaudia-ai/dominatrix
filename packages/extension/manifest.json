@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "DOMINATRIX",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "She sees everything. She controls everything. She owns the DOM.",
   "permissions": [
     "tabs",
@@ -10,7 +10,9 @@
     "cookies",
     "storage",
     "debugger",
-    "webRequest"
+    "webRequest",
+    "identity",
+    "identity.email"
   ],
   "host_permissions": [
     "<all_urls>"

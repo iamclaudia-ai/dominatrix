@@ -30,7 +30,17 @@ export interface EventMessage extends BaseMessage {
   type: 'event';
   event: EventType;
   data: any;
-  tabId: number;
+  tabId?: number;
+  profile?: ProfileInfo;
+}
+
+/**
+ * Profile/Instance Information
+ */
+export interface ProfileInfo {
+  extensionId: string;      // chrome.runtime.id - unique per profile
+  profileName?: string;      // User-friendly profile name (if available)
+  instanceId: string;        // Unique identifier for this connection
 }
 
 export interface ErrorMessage extends BaseMessage {
@@ -82,6 +92,7 @@ export type CommandAction =
  * Event Types - What the extension can broadcast
  */
 export type EventType =
+  | 'connected'
   | 'tabCreated'
   | 'tabUpdated'
   | 'tabClosed'
@@ -99,6 +110,8 @@ export interface TabInfo {
   title: string;
   active: boolean;
   windowId: number;
+  profileId?: string;        // Which extension instance owns this tab
+  profileName?: string;      // User-friendly profile name
 }
 
 /**

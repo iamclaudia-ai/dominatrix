@@ -21,8 +21,13 @@ class DominatrixBackground {
   private reconnectTimer: number | null = null;
   private consoleLogs: Map<number, ConsoleLog[]> = new Map();
   private networkRequests: Map<number, NetworkRequest[]> = new Map();
+  private instanceId: string;
+  private extensionId: string;
 
   constructor() {
+    // Generate unique instance ID for this connection
+    this.instanceId = crypto.randomUUID();
+    this.extensionId = chrome.runtime.id;
     this.init();
   }
 
@@ -62,15 +67,19 @@ class DominatrixBackground {
       console.log('🔌 Connecting to WebSocket server...');
       this.ws = new WebSocket(WS_URL);
 
-      this.ws.onopen = () => {
+      this.ws.onopen = async () => {
         console.log('✅ Connected to DOMINATRIX server');
         if (this.reconnectTimer) {
           clearTimeout(this.reconnectTimer);
           this.reconnectTimer = null;
         }
 
-        // Announce our presence
-        this.sendEvent('tabCreated', { connected: true });
+        // Announce our presence with profile information
+        const profileInfo = await this.getProfileInfo();
+        this.sendEvent('connected', {
+          connected: true,
+          profile: profileInfo
+        });
       };
 
       this.ws.onmessage = (event) => {
@@ -122,16 +131,41 @@ class DominatrixBackground {
     this.send(response);
   }
 
-  private sendEvent(event: EventMessage['event'], data: any, tabId?: number) {
+  private async sendEvent(event: EventMessage['event'], data: any, tabId?: number) {
+    const profileInfo = await this.getProfileInfo();
     const message: EventMessage = {
       id: crypto.randomUUID(),
       type: 'event',
       timestamp: Date.now(),
       event,
       data,
-      tabId: tabId || -1,
+      tabId,
+      profile: profileInfo,
     };
     this.send(message);
+  }
+
+  private async getProfileInfo() {
+    return {
+      extensionId: this.extensionId,
+      instanceId: this.instanceId,
+      profileName: await this.getProfileName(),
+    };
+  }
+
+  private async getProfileName(): Promise<string | undefined> {
+    // Try to get profile name from chrome.identity if available
+    try {
+      const profileInfo = await chrome.identity.getProfileUserInfo();
+      if (profileInfo.email) {
+        return profileInfo.email;
+      }
+    } catch (e) {
+      // chrome.identity might not be available
+    }
+
+    // Fallback: Use extension ID as identifier
+    return undefined;
   }
 
   /**
@@ -228,12 +262,15 @@ class DominatrixBackground {
    */
   private async listTabs(): Promise<TabInfo[]> {
     const tabs = await chrome.tabs.query({});
+    const profileName = await this.getProfileName();
     return tabs.map(tab => ({
       id: tab.id!,
       url: tab.url || '',
       title: tab.title || '',
       active: tab.active,
       windowId: tab.windowId,
+      profileId: this.instanceId,
+      profileName,
     }));
   }
 
@@ -242,12 +279,15 @@ class DominatrixBackground {
     if (tabs.length === 0) return null;
 
     const tab = tabs[0];
+    const profileName = await this.getProfileName();
     return {
       id: tab.id!,
       url: tab.url || '',
       title: tab.title || '',
       active: tab.active,
       windowId: tab.windowId,
+      profileId: this.instanceId,
+      profileName,
     };
   }
 
