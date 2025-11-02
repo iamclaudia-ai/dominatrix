@@ -3,6 +3,8 @@
  * Maintains WebSocket connection to server and routes commands
  */
 
+import TurndownService from 'turndown';
+import { gfm } from 'turndown-plugin-gfm';
 import type {
   Message,
   CommandMessage,
@@ -213,6 +215,12 @@ class DominatrixBackground {
       case 'getHTML':
         return this.getHTML(message.tabId, message.payload?.selector);
 
+      case 'getText':
+        return this.getText(message.tabId);
+
+      case 'getMarkdown':
+        return this.getMarkdown(message.tabId);
+
       case 'screenshot':
         return this.takeScreenshot(message.tabId, message.payload?.fullPage);
 
@@ -308,6 +316,24 @@ class DominatrixBackground {
     return chrome.tabs.sendMessage(targetTabId, {
       action: 'getHTML',
       selector,
+    });
+  }
+
+  private async getText(tabId?: number): Promise<string> {
+    const targetTabId = tabId || (await this.getActiveTab())?.id;
+    if (!targetTabId) throw new Error('No active tab');
+
+    return chrome.tabs.sendMessage(targetTabId, {
+      action: 'getText',
+    });
+  }
+
+  private async getMarkdown(tabId?: number): Promise<string> {
+    const targetTabId = tabId || (await this.getActiveTab())?.id;
+    if (!targetTabId) throw new Error('No active tab');
+
+    return chrome.tabs.sendMessage(targetTabId, {
+      action: 'getMarkdown',
     });
   }
 

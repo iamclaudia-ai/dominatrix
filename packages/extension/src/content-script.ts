@@ -3,6 +3,8 @@
  * Runs in the context of web pages and has access to the DOM
  */
 
+import TurndownService from 'turndown';
+import { gfm } from 'turndown-plugin-gfm';
 import type { DOMNode, StorageData, ConsoleLog } from './types.js';
 import { Interpreter, parse } from '@mariozechner/jailjs';
 
@@ -69,6 +71,14 @@ class DominatrixContentScript {
 
           case 'getHTML':
             result = this.getHTML(message.selector);
+            break;
+
+          case 'getText':
+            result = this.getText();
+            break;
+
+          case 'getMarkdown':
+            result = this.getMarkdown();
             break;
 
           case 'executeScript':
@@ -274,6 +284,30 @@ class DominatrixContentScript {
     }
 
     return element.outerHTML;
+  }
+
+  /**
+   * Get plain text content of the page body
+   * More efficient than parsing full HTML when you only need text
+   */
+  private getText(): string {
+    return document.body.innerText;
+  }
+
+  /**
+   * Convert page HTML to Markdown
+   * Preserves structure (headings, links, lists) without HTML noise
+   */
+  private getMarkdown(): string {
+    const turndownService = new TurndownService({
+      headingStyle: 'atx',
+      codeBlockStyle: 'fenced',
+    });
+
+    // Add GitHub Flavored Markdown support (tables, strikethrough, etc)
+    turndownService.use(gfm);
+
+    return turndownService.turndown(document.body);
   }
 
   /**

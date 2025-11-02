@@ -556,6 +556,58 @@ program
   });
 
 /**
+ * Text Command
+ */
+program
+  .command('text')
+  .description('Get plain text content of page (innerText)')
+  .option('-t, --tab-id <id>', 'Tab ID to target (required for multi-profile)')
+  .action(async (options) => {
+    await ensureConnected();
+    const spinner = ora('Fetching text...').start();
+
+    try {
+      const text = await client.sendCommand('getText', { tabId: options.tabId ? parseInt(options.tabId) : undefined });
+      spinner.stop();
+
+      // Always output as JSON for token efficiency
+      output({ text }, true);
+    } catch (error) {
+      spinner.fail(chalk.red('Failed to fetch text'));
+      console.error(error);
+      process.exit(1);
+    }
+
+    client.disconnect();
+  });
+
+/**
+ * Markdown Command
+ */
+program
+  .command('markdown')
+  .description('Get page content as Markdown (preserves structure)')
+  .option('-t, --tab-id <id>', 'Tab ID to target (required for multi-profile)')
+  .action(async (options) => {
+    await ensureConnected();
+    const spinner = ora('Converting to Markdown...').start();
+
+    try {
+      const markdown = await client.sendCommand('getMarkdown', { tabId: options.tabId ? parseInt(options.tabId) : undefined });
+      spinner.stop();
+
+      // Always output as JSON for token efficiency
+      output({ markdown }, true);
+    } catch (error) {
+      spinner.fail(chalk.red('Failed to convert to Markdown'));
+      console.error(error);
+      process.exit(1);
+    }
+
+    client.disconnect();
+  });
+
+/**
  * ASCII Art Banner
  */
 if (process.argv.length === 2) {
