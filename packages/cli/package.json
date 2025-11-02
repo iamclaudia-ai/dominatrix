@@ -1,0 +1,27 @@
+{
+  "name": "@dominatrix/cli",
+  "version": "0.1.0",
+  "description": "CLI tool for DOMINATRIX - She commands the DOM",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "dominatrix": "./dist/index.js"
+  },
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "build": "bun build src/index.ts --outdir dist --target bun",
+    "start": "bun run dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "chalk": "^5.4.1",
+    "commander": "^12.1.0",
+    "ora": "^8.1.1",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.13",
+    "typescript": "^5.7.2"
+  }
+}

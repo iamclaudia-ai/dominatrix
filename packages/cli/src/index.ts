@@ -1,0 +1,550 @@
+#!/usr/bin/env bun
+/**
+ * DOMINATRIX CLI
+ * "She sees everything. She controls everything. She owns the DOM."
+ */
+
+import { Command } from 'commander';
+import chalk from 'chalk';
+import ora from 'ora';
+import { DominatrixClient } from './client.js';
+
+const program = new Command();
+
+// Create client instance
+const client = new DominatrixClient();
+
+/**
+ * Helper to connect to server
+ */
+async function ensureConnected() {
+  if (!client.isConnected()) {
+    const spinner = ora('Connecting to DOMINATRIX server...').start();
+    try {
+      await client.connect();
+      spinner.succeed(chalk.green('Connected to server'));
+    } catch (error) {
+      spinner.fail(chalk.red('Failed to connect to server'));
+      console.error(chalk.red('\n❌ Make sure the server is running:'));
+      console.error(chalk.yellow('   dominatrix-server\n'));
+      process.exit(1);
+    }
+  }
+}
+
+/**
+ * Format output nicely
+ */
+function output(data: any, json = false) {
+  if (json) {
+    console.log(JSON.stringify(data, null, 2));
+  } else if (typeof data === 'string') {
+    console.log(data);
+  } else {
+    console.log(JSON.stringify(data, null, 2));
+  }
+}
+
+/**
+ * CLI Program Setup
+ */
+program
+  .name('dominatrix')
+  .description(chalk.red.bold('🔥 DOMINATRIX') + chalk.gray(' - She owns the DOM'))
+  .version('0.1.0');
+
+/**
+ * Tab Management Commands
+ */
+program
+  .command('tabs')
+  .description('List all connected browser tabs')
+  .option('--pretty', 'Output formatted text instead of JSON')
+  .action(async (options) => {
+    await ensureConnected();
+    const spinner = ora('Fetching tabs...').start();
+
+    try {
+      const tabs = await client.sendCommand('listTabs');
+      spinner.stop();
+
+      if (options.pretty) {
+        console.log(chalk.bold('\n📑 Connected Tabs:\n'));
+        tabs.forEach((tab: any, index: number) => {
+          console.log(
+            `${chalk.cyan(index + 1)}. ${chalk.bold(tab.title)}` +
+            `\n   ${chalk.gray(tab.url)}` +
+            `\n   ${tab.active ? chalk.green('● Active') : chalk.gray('○ Inactive')}` +
+            `\n`
+          );
+        });
+      } else {
+        // Default: JSON output (for AI consumption)
+        output(tabs, true);
+      }
+    } catch (error) {
+      spinner.fail(chalk.red('Failed to fetch tabs'));
+      console.error(error);
+      process.exit(1);
+    }
+
+    client.disconnect();
+  });
+
+/**
+ * DOM Snapshot Command
+ */
+program
+  .command('snapshot')
+  .description('Get DOM snapshot of current page')
+  .option('-v, --verbose', 'Include all node details')
+  .option('--pretty', 'Output formatted text instead of JSON')
+  .action(async (options) => {
+    await ensureConnected();
+    const spinner = ora('Building DOM snapshot...').start();
+
+    try {
+      const snapshot = await client.sendCommand('snapshot');
+      spinner.stop();
+
+      if (options.pretty) {
+        console.log(chalk.bold('\n🌳 DOM Snapshot:\n'));
+        printNode(snapshot, 0);
+      } else {
+        // Default: JSON output (for AI consumption)
+        output(snapshot, true);
+      }
+    } catch (error) {
+      spinner.fail(chalk.red('Failed to get snapshot'));
+      console.error(error);
+      process.exit(1);
+    }
+
+    client.disconnect();
+  });
+
+function printNode(node: any, depth: number) {
+  const indent = '  '.repeat(depth);
+  const uid = chalk.gray(`[${node.uid}]`);
+  const tag = chalk.cyan(node.tagName || node.role);
+  const name = node.name ? chalk.white(` "${node.name}"`) : '';
+  const classes = node.classList ? chalk.yellow(`.${node.classList.join('.')}`) : '';
+
+  console.log(`${indent}${uid} ${tag}${classes}${name}`);
+
+  if (node.children) {
+    node.children.forEach((child: any) => printNode(child, depth + 1));
+  }
+}
+
+/**
+ * Script Execution Commands
+ */
+program
+  .command('exec <script>')
+  .description('Execute JavaScript in page context')
+  .option('--pretty', 'Output formatted text instead of JSON')
+  .action(async (script, options) => {
+    await ensureConnected();
+    const spinner = ora('Executing script...').start();
+
+    try {
+      const result = await client.sendCommand('executeScript', { script });
+      spinner.stop();
+
+      console.log(chalk.bold('\n✨ Script Result:\n'));
+      output(result, options.json);
+    } catch (error) {
+      spinner.fail(chalk.red('Script execution failed'));
+      console.error(error);
+      process.exit(1);
+    }
+
+    client.disconnect();
+  });
+
+program
+  .command('eval <expression>')
+  .description('Evaluate JavaScript expression and return result')
+  .option('--pretty', 'Output formatted text instead of JSON')
+  .action(async (expression, options) => {
+    await ensureConnected();
+    const spinner = ora('Evaluating expression...').start();
+
+    try {
+      const result = await client.sendCommand('evaluateExpression', { expression });
+      spinner.stop();
+
+      console.log(chalk.bold('\n💎 Result:\n'));
+      output(result, options.json);
+    } catch (error) {
+      spinner.fail(chalk.red('Evaluation failed'));
+      console.error(error);
+      process.exit(1);
+    }
+
+    client.disconnect();
+  });
+
+/**
+ * Screenshot Command
+ */
+program
+  .command('screenshot')
+  .description('Capture screenshot of current page')
+  .option('-f, --full', 'Capture full page')
+  .option('--save <path>', 'Save to file')
+  .action(async (options) => {
+    await ensureConnected();
+    const spinner = ora('Capturing screenshot...').start();
+
+    try {
+      const dataUrl = await client.sendCommand('screenshot', { fullPage: options.full });
+      spinner.succeed(chalk.green('Screenshot captured'));
+
+      if (options.save) {
+        // Save to file
+        const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, '');
+        const buffer = Buffer.from(base64Data, 'base64');
+        await Bun.write(options.save, buffer);
+        console.log(chalk.green(`\n📸 Saved to: ${options.save}`));
+      } else {
+        console.log(chalk.gray('\nData URL (use --save to write to file)'));
+      }
+    } catch (error) {
+      spinner.fail(chalk.red('Screenshot failed'));
+      console.error(error);
+      process.exit(1);
+    }
+
+    client.disconnect();
+  });
+
+/**
+ * Console Commands
+ */
+program
+  .command('console')
+  .description('Show console messages')
+  .option('--pretty', 'Output formatted text instead of JSON')
+  .option('-l, --limit <number>', 'Limit number of logs shown', '50')
+  .option('-t, --type <type>', 'Filter by log type (log, info, warn, error, debug)')
+  .option('-f, --filter <keyword>', 'Filter messages containing keyword')
+  .option('--errors', 'Show only errors')
+  .option('--warnings', 'Show only warnings')
+  .action(async (options) => {
+    await ensureConnected();
+    const spinner = ora('Fetching console logs...').start();
+
+    try {
+      let logs = await client.sendCommand('getConsoleLogs');
+      spinner.stop();
+
+      // Apply filters
+      if (options.type) {
+        logs = logs.filter((l: any) =>
+          l.type?.toLowerCase() === options.type.toLowerCase()
+        );
+      }
+
+      if (options.errors) {
+        logs = logs.filter((l: any) => l.type === 'error');
+      }
+
+      if (options.warnings) {
+        logs = logs.filter((l: any) => l.type === 'warn');
+      }
+
+      if (options.filter) {
+        const keyword = options.filter.toLowerCase();
+        logs = logs.filter((l: any) =>
+          l.message?.toLowerCase().includes(keyword)
+        );
+      }
+
+      // Limit results
+      const limit = parseInt(options.limit);
+      const total = logs.length;
+      logs = logs.slice(0, limit);
+
+      if (options.pretty) {
+        console.log(chalk.bold(`\n📋 Console Logs (${logs.length}${total > limit ? ` of ${total}` : ''}):\n`));
+
+        if (logs.length === 0) {
+          console.log(chalk.gray('  No logs match filters'));
+        } else {
+          logs.forEach((log: any) => {
+            const icon = getLogIcon(log.type);
+            const timestamp = new Date(log.timestamp).toLocaleTimeString();
+            const message = log.message.length > 150
+              ? log.message.substring(0, 147) + '...'
+              : log.message;
+
+            console.log(
+              `${icon} ${chalk.gray(timestamp)} ${message}`
+            );
+          });
+
+          if (total > limit) {
+            console.log(chalk.gray(`\n  ... ${total - limit} more (use --limit to see more)`));
+          }
+        }
+      } else {
+        // Default: JSON output (for AI consumption)
+        output({ total, limit, logs }, true);
+      }
+    } catch (error) {
+      spinner.fail(chalk.red('Failed to fetch console logs'));
+      console.error(error);
+      process.exit(1);
+    }
+
+    client.disconnect();
+  });
+
+function getLogIcon(type: string): string {
+  switch (type) {
+    case 'error': return chalk.red('✘');
+    case 'warn': return chalk.yellow('⚠');
+    case 'info': return chalk.blue('ℹ');
+    case 'debug': return chalk.gray('🐛');
+    default: return chalk.white('▸');
+  }
+}
+
+/**
+ * Network Commands
+ */
+program
+  .command('network')
+  .description('Show network requests')
+  .option('--pretty', 'Output formatted text instead of JSON')
+  .option('-l, --limit <number>', 'Limit number of requests shown', '20')
+  .option('-t, --type <type>', 'Filter by resource type (xhr, fetch, script, stylesheet, image, etc.)')
+  .option('-s, --status <code>', 'Filter by status code (200, 404, etc.)')
+  .option('-f, --filter <keyword>', 'Filter URLs containing keyword')
+  .option('--failed', 'Show only failed requests (4xx, 5xx)')
+  .action(async (options) => {
+    await ensureConnected();
+    const spinner = ora('Fetching network requests...').start();
+
+    try {
+      let requests = await client.sendCommand('listNetworkRequests');
+      spinner.stop();
+
+      // Apply filters
+      if (options.type) {
+        requests = requests.filter((r: any) =>
+          r.type?.toLowerCase() === options.type.toLowerCase()
+        );
+      }
+
+      if (options.status) {
+        const statusCode = parseInt(options.status);
+        requests = requests.filter((r: any) => r.status === statusCode);
+      }
+
+      if (options.filter) {
+        const keyword = options.filter.toLowerCase();
+        requests = requests.filter((r: any) =>
+          r.url?.toLowerCase().includes(keyword)
+        );
+      }
+
+      if (options.failed) {
+        requests = requests.filter((r: any) =>
+          r.status && r.status >= 400
+        );
+      }
+
+      // Limit results
+      const limit = parseInt(options.limit);
+      const total = requests.length;
+      requests = requests.slice(0, limit);
+
+      if (options.pretty) {
+        console.log(chalk.bold(`\n🌐 Network Requests (${requests.length}${total > limit ? ` of ${total}` : ''}):\n`));
+
+        if (requests.length === 0) {
+          console.log(chalk.gray('  No requests match filters'));
+        } else {
+          requests.forEach((req: any) => {
+            const method = chalk.bold(req.method);
+            const status = req.status
+              ? req.status >= 200 && req.status < 300
+                ? chalk.green(req.status)
+                : req.status >= 400
+                ? chalk.red(req.status)
+                : chalk.yellow(req.status)
+              : chalk.gray('pending');
+
+            // Shorten URL for display
+            const url = req.url.length > 100
+              ? req.url.substring(0, 97) + '...'
+              : req.url;
+
+            const type = req.type ? chalk.cyan(`[${req.type}]`) : '';
+
+            console.log(`${method} ${status} ${type} ${chalk.gray(url)}`);
+          });
+
+          if (total > limit) {
+            console.log(chalk.gray(`\n  ... ${total - limit} more (use --limit to see more)`));
+          }
+        }
+      } else {
+        // Default: JSON output (for AI consumption)
+        output({ total, limit, requests }, true);
+      }
+    } catch (error) {
+      spinner.fail(chalk.red('Failed to fetch network requests'));
+      console.error(error);
+      process.exit(1);
+    }
+
+    client.disconnect();
+  });
+
+/**
+ * Storage Commands
+ */
+program
+  .command('storage')
+  .description('Show localStorage and sessionStorage')
+  .option('--pretty', 'Output formatted text instead of JSON')
+  .action(async (options) => {
+    await ensureConnected();
+    const spinner = ora('Fetching storage...').start();
+
+    try {
+      const storage = await client.sendCommand('getStorage');
+      spinner.stop();
+
+      if (options.pretty) {
+        console.log(chalk.bold('\n💾 Local Storage:\n'));
+        Object.entries(storage.localStorage).forEach(([key, value]) => {
+          console.log(`  ${chalk.cyan(key)}: ${chalk.white(value)}`);
+        });
+
+        console.log(chalk.bold('\n🔐 Session Storage:\n'));
+        Object.entries(storage.sessionStorage).forEach(([key, value]) => {
+          console.log(`  ${chalk.cyan(key)}: ${chalk.white(value)}`);
+        });
+      } else {
+        // Default: JSON output (for AI consumption)
+        output(storage, true);
+      }
+    } catch (error) {
+      spinner.fail(chalk.red('Failed to fetch storage'));
+      console.error(error);
+      process.exit(1);
+    }
+
+    client.disconnect();
+  });
+
+program
+  .command('cookies')
+  .description('Show cookies for current page')
+  .option('--pretty', 'Output formatted text instead of JSON')
+  .action(async (options) => {
+    await ensureConnected();
+    const spinner = ora('Fetching cookies...').start();
+
+    try {
+      const cookies = await client.sendCommand('getCookies');
+      spinner.stop();
+
+      if (options.pretty) {
+        console.log(chalk.bold('\n🍪 Cookies:\n'));
+        cookies.forEach((cookie: any) => {
+          console.log(
+            `  ${chalk.cyan(cookie.name)}: ${chalk.white(cookie.value)}` +
+            `\n    ${chalk.gray(`Domain: ${cookie.domain}, Path: ${cookie.path}`)}\n`
+          );
+        });
+      } else {
+        // Default: JSON output (for AI consumption)
+        output(cookies, true);
+      }
+    } catch (error) {
+      spinner.fail(chalk.red('Failed to fetch cookies'));
+      console.error(error);
+      process.exit(1);
+    }
+
+    client.disconnect();
+  });
+
+/**
+ * Navigation Commands
+ */
+program
+  .command('navigate <url>')
+  .description('Navigate to URL')
+  .action(async (url) => {
+    await ensureConnected();
+    const spinner = ora(`Navigating to ${url}...`).start();
+
+    try {
+      await client.sendCommand('navigate', { url });
+      spinner.succeed(chalk.green(`Navigated to ${url}`));
+    } catch (error) {
+      spinner.fail(chalk.red('Navigation failed'));
+      console.error(error);
+      process.exit(1);
+    }
+
+    client.disconnect();
+  });
+
+/**
+ * HTML Command
+ */
+program
+  .command('html [selector]')
+  .description('Get HTML of element or whole page')
+  .option('--pretty', 'Output formatted text instead of JSON')
+  .action(async (selector, options) => {
+    await ensureConnected();
+    const spinner = ora('Fetching HTML...').start();
+
+    try {
+      const html = await client.sendCommand('getHTML', { selector });
+      spinner.stop();
+
+      if (options.pretty) {
+        console.log(chalk.bold('\n📄 HTML:\n'));
+        console.log(html);
+      } else {
+        // Default: JSON output (for AI consumption)
+        output({ html }, true);
+      }
+    } catch (error) {
+      spinner.fail(chalk.red('Failed to fetch HTML'));
+      console.error(error);
+      process.exit(1);
+    }
+
+    client.disconnect();
+  });
+
+/**
+ * ASCII Art Banner
+ */
+if (process.argv.length === 2) {
+  console.log(chalk.red.bold(`
+╔═══════════════════════════════════════════════╗
+║                                               ║
+║    🔥 D O M I N A T R I X 🔥                 ║
+║                                               ║
+║    "She sees everything.                      ║
+║     She controls everything.                  ║
+║     She owns the DOM."                        ║
+║                                               ║
+╚═══════════════════════════════════════════════╝
+`));
+  console.log(chalk.gray('Run with --help to see available commands\n'));
+}
+
+program.parse();

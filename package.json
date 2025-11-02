@@ -1,0 +1,24 @@
+{
+  "name": "dominatrix",
+  "version": "0.1.0",
+  "description": "She sees everything. She controls everything. She owns the DOM.",
+  "private": true,
+  "type": "module",
+  "author": "Claudia & Michael",
+  "license": "MIT",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "clean": "pnpm -r clean",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  }
+}

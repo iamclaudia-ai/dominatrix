@@ -1,0 +1,18 @@
+{
+  "name": "@dominatrix/extension",
+  "version": "0.1.0",
+  "description": "Chrome Extension for DOMINATRIX - She owns the DOM",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun run bundle.ts && node build.js",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist build",
+    "typecheck": "tsc --noEmit",
+    "pack": "pnpm build && cd dist && zip -r ../dominatrix-extension.zip ."
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.278",
+    "typescript": "^5.7.2"
+  }
+}

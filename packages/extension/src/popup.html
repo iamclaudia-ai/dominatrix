@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>DOMINATRIX</title>
+  <style>
+    body {
+      width: 300px;
+      padding: 20px;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #1a0000 0%, #4a0000 100%);
+      color: #ffffff;
+      margin: 0;
+    }
+
+    h1 {
+      margin: 0 0 10px 0;
+      font-size: 24px;
+      font-weight: bold;
+      background: linear-gradient(90deg, #ff0040, #ff6b9d);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-align: center;
+    }
+
+    .tagline {
+      text-align: center;
+      font-size: 12px;
+      color: #ff6b9d;
+      margin-bottom: 20px;
+      font-style: italic;
+    }
+
+    .status {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+    }
+
+    .status-indicator {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+
+    .status-indicator.connected {
+      background: #00ff88;
+      box-shadow: 0 0 10px #00ff88;
+    }
+
+    .status-indicator.disconnected {
+      background: #ff0040;
+      box-shadow: 0 0 10px #ff0040;
+    }
+
+    .info {
+      font-size: 12px;
+      color: #cccccc;
+      line-height: 1.6;
+    }
+
+    .info strong {
+      color: #ff6b9d;
+    }
+
+    a {
+      color: #ff6b9d;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔥 DOMINATRIX 🔥</h1>
+  <div class="tagline">"She owns the DOM"</div>
+
+  <div class="status">
+    <span class="status-indicator" id="status"></span>
+    <span id="status-text">Checking connection...</span>
+  </div>
+
+  <div class="info">
+    <p><strong>Server:</strong> ws://localhost:9222</p>
+    <p><strong>CLI Usage:</strong> <code>dominatrix --help</code></p>
+    <p>Connect via CLI to start controlling this browser tab.</p>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
