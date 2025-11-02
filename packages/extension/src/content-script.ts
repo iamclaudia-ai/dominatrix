@@ -307,6 +307,9 @@ class DominatrixContentScript {
     // Add GitHub Flavored Markdown support (tables, strikethrough, etc)
     turndownService.use(gfm);
 
+    // Ignore script and style tags - we don't want that in markdown
+    turndownService.remove(['script', 'style', 'noscript']);
+
     return turndownService.turndown(document.body);
   }
 
