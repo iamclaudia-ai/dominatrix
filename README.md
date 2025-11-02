@@ -39,7 +39,7 @@ DOMINATRIX is a **lightweight, powerful Chrome extension + CLI tool** that gives
 - ✅ **Lightweight** - 6k tokens for essential MCPs, rest is pure CLI
 - ✅ **Real browser** - Works with your actual Chrome windows
 - ✅ **Multi-profile** - Control tabs across ALL your Chrome profiles
-- ✅ **CSP bypass** - JailJS integration executes JavaScript anywhere
+- ✅ **CSP bypass** - [JailJS](https://github.com/badlogic/jailjs) integration executes JavaScript anywhere
 - ✅ **Token-efficient** - Text & Markdown extraction commands
 
 ---
@@ -232,12 +232,6 @@ dominatrix navigate https://example.com --profile you@example.com
 - *"Console logs? Network traffic? Cookies? She takes all of it."*
 - *"DevTools wishes it could kneel."*
 
-### Visual Identity
-
-- **Icon:** Sleek black chrome with glowing red whip curling into `< >` tags
-- **Colors:** Deep crimson (#ff0040) + obsidian black (#1a0000) + electric purple accents
-- **Font:** Sharp, modern (Futura/Orbitron vibes)
-
 ---
 
 ## 💡 Token Efficiency Comparison
@@ -407,7 +401,7 @@ dominatrix eval 'document.querySelector("button.submit").click()' --tab-id <id>
 
 - **Issues:** [GitHub Issues](https://github.com/yourusername/dominatrix/issues)
 - **Discussions:** [GitHub Discussions](https://github.com/yourusername/dominatrix/discussions)
-- **Twitter:** [@yourusername](https://twitter.com/yourusername)
+- **𝕏:** [@kiliman](https://x.com/kiliman)
 
 ---
 
