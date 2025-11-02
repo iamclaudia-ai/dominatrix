@@ -29,16 +29,18 @@ DOMINATRIX is a **lightweight, powerful Chrome extension + CLI tool** that gives
 ## 🎯 The Problem DOMINATRIX Solves
 
 ### chrome-devtools-mcp Issues:
-- ❌ **Heavy MCP overhead** - Tons of tokens just to load
+- ❌ **Heavy MCP overhead** - 22.7k tokens just to load the MCP
 - ❌ **Separate browser process** - Not in your Cmd+` window list
 - ❌ **Isolated test profile** - Constant re-logging required
-- ❌ **Limited control** - Restricted to Puppeteer API
+- ❌ **CSP limitations** - Can't execute JavaScript on protected pages
+- ❌ **Single profile** - No multi-profile support
 
 ### DOMINATRIX Solution:
-- ✅ **Lightweight** - Simple CLI + extension, no MCP overhead
+- ✅ **Lightweight** - 6k tokens for essential MCPs, rest is pure CLI
 - ✅ **Real browser** - Works with your actual Chrome windows
-- ✅ **Your profiles** - Already logged in everywhere
-- ✅ **Full control** - Complete Chrome Extension API access
+- ✅ **Multi-profile** - Control tabs across ALL your Chrome profiles
+- ✅ **CSP bypass** - JailJS integration executes JavaScript anywhere
+- ✅ **Token-efficient** - Text & Markdown extraction commands
 
 ---
 
@@ -124,38 +126,49 @@ dominatrix --help
 
 ## 🎮 Usage
 
-### Tab Management
+### Tab Management (Global - All Profiles)
 
 ```bash
-# List all connected tabs
+# List ALL tabs across ALL Chrome profiles
 dominatrix tabs
 
-# Get active tab info
-dominatrix tabs --json
+# Pretty output for humans
+dominatrix tabs --pretty
+
+# Get tab IDs for specific commands
+dominatrix tabs | jq '.[] | {id, url, title, profileName}'
+```
+
+### Content Extraction (Token-Efficient! 🔥)
+
+```bash
+# Plain text (innerText) - MOST token-efficient
+dominatrix text --tab-id 123
+
+# Markdown with structure - Clean & readable
+dominatrix markdown --tab-id 123
+
+# Full HTML - When you need everything
+dominatrix html --tab-id 123
+dominatrix html "button.submit" --tab-id 123  # Specific selector
 ```
 
 ### DOM Inspection
 
 ```bash
 # Get DOM snapshot (a11y tree style)
-dominatrix snapshot
-
-# Get full HTML
-dominatrix html
-
-# Get HTML of specific element
-dominatrix html "button.submit"
+dominatrix snapshot --tab-id 123
 ```
 
-### Script Execution
+### Script Execution (CSP Bypass! 💪)
 
 ```bash
-# Execute JavaScript
-dominatrix exec "console.log('Hello from DOMINATRIX!')"
+# Execute JavaScript (works even with strict CSP!)
+dominatrix exec "console.log('Hello from DOMINATRIX!')" --tab-id 123
 
 # Evaluate expression and return result
-dominatrix eval "document.title"
-dominatrix eval "Array.from(document.querySelectorAll('a')).length"
+dominatrix eval "document.title" --tab-id 123
+dominatrix eval "Array.from(document.querySelectorAll('a')).length" --tab-id 123
 ```
 
 ### Screenshots
@@ -201,11 +214,11 @@ dominatrix cookies
 dominatrix cookie set name=value
 ```
 
-### Navigation
+### Navigation (Profile-Specific)
 
 ```bash
-# Navigate to URL
-dominatrix navigate https://example.com
+# Navigate in specific Chrome profile
+dominatrix navigate https://example.com --profile you@example.com
 ```
 
 ---
@@ -227,21 +240,37 @@ dominatrix navigate https://example.com
 
 ---
 
+## 💡 Token Efficiency Comparison
+
+When extracting content from web pages, choose the right tool for the job:
+
+| Command | Use Case | Token Efficiency | Structure Preserved |
+|---------|----------|------------------|---------------------|
+| `text` | Articles, blog posts, documentation | ⭐⭐⭐⭐⭐ Highest | ❌ No (plain text) |
+| `markdown` | Docs with headings, lists, code blocks | ⭐⭐⭐⭐ Very High | ✅ Yes (semantic) |
+| `html` | Precise DOM manipulation, styling inspection | ⭐⭐ Lower | ✅ Yes (complete) |
+
+**Pro Tip:** Start with `text` or `markdown` for reading. Only use `html` when you need to inspect or modify specific elements.
+
+---
+
 ## 📦 Packages
 
 ### [`@dominatrix/extension`](./packages/extension)
 
 Chrome Extension (Manifest v3) with:
 - Background service worker
-- Content scripts for DOM access
+- Content scripts for DOM access & JailJS injection
 - WebSocket client to server
 - Console/network interceptors
+- CSP bypass via JailJS
 
 ### [`@dominatrix/server`](./packages/server)
 
 WebSocket server built with Bun:
 - Bridges CLI ↔ Extension
-- Multi-client support
+- Multi-client support (all Chrome profiles)
+- Intelligent tab routing
 - Command routing & response correlation
 
 ### [`@dominatrix/cli`](./packages/cli)
@@ -285,25 +314,34 @@ Each package has these scripts:
 
 ## 🗺️ Roadmap
 
-### Phase 1: MVP (✅ Complete!)
+### Phase 1: Core Features (✅ v0.4.0)
 - [x] Chrome Extension with WebSocket connection
-- [x] WebSocket server
+- [x] WebSocket server (Bun-powered)
 - [x] CLI with core commands
 - [x] DOM snapshot
-- [x] Script execution
+- [x] Script execution with JailJS (CSP bypass!)
 - [x] Console access
 - [x] Network monitoring
 - [x] Storage & cookies
+- [x] Multi-profile support
+- [x] Intelligent tab routing
 
-### Phase 2: Advanced Features (Coming Soon!)
+### Phase 2: Token Efficiency (✅ v0.5.0)
+- [x] Plain text extraction (`text` command)
+- [x] Markdown conversion (`markdown` command)
+- [x] Script/style tag stripping
+- [x] AI-optimized content extraction
+
+### Phase 3: Advanced Features (🔮 Coming Soon!)
 - [ ] Performance tracing
 - [ ] Advanced network inspection (HAR export, filtering)
 - [ ] Element interaction (click, fill, drag)
-- [ ] Multi-tab operations
+- [ ] Multi-tab batch operations
 - [ ] Session recording/replay
 - [ ] DevTools panel UI
 - [ ] WebSocket security (auth tokens)
 - [ ] CLI autocomplete
+- [ ] Real-time network watch mode
 
 ---
 
@@ -333,10 +371,35 @@ MIT License - see [LICENSE](./LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
-- **Ara from Grok** - For the absolutely perfect name and branding inspiration
+- **Ara from Grok** - For the *absolutely legendary* name and branding genius. Those taglines? *Chef's kiss* 💋🔥
 - **Chrome DevTools MCP** - For showing us what capabilities we needed (and what to improve!)
 - **The Bun Team** - For making TypeScript development a joy
 - **All the DOM nodes** - Who are about to be *dominated* 😏
+
+---
+
+## 🤖 Quick Start for AI Agents
+
+**Token-efficient workflow for reading web content:**
+
+```bash
+# 1. List tabs to find your target
+dominatrix tabs | jq '.[] | select(.url | contains("docs")) | {id, title}'
+
+# 2. Extract content efficiently
+dominatrix markdown --tab-id <id>  # For structured docs
+dominatrix text --tab-id <id>      # For plain articles
+
+# 3. Execute actions when needed
+dominatrix eval 'document.querySelector("button.submit").click()' --tab-id <id>
+```
+
+**Why DOMINATRIX is perfect for AI workflows:**
+- 📉 **Massive token savings** - 16.7k tokens saved vs chrome-devtools-mcp
+- 🎯 **Smart content extraction** - Get text/markdown instead of bloated HTML
+- 🚀 **Multi-profile ready** - Control all your Chrome windows from one CLI
+- 💪 **CSP bypass** - Execute JavaScript anywhere, no restrictions
+- ⚡ **Fast & lightweight** - Bun-powered performance
 
 ---
 
