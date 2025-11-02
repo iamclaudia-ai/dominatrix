@@ -5,6 +5,9 @@
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
+import pkg from '../package.json' assert { type: 'json' };
+
+const VERSION = pkg.version;
 
 const PORT = 9222;
 const HOST = 'localhost';
@@ -31,6 +34,7 @@ class DominatrixServer {
 
   constructor() {
     console.log('🔥 DOMINATRIX Server starting...');
+    console.log(`📦 Version: ${VERSION}`);
 
     this.wss = new WebSocketServer({
       host: HOST,
