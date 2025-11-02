@@ -58,25 +58,41 @@ program
  */
 program
   .command('tabs')
-  .description('List all connected browser tabs')
+  .description('List all connected browser tabs across all profiles')
   .option('--pretty', 'Output formatted text instead of JSON')
+  .option('-p, --profile <email>', 'Filter tabs by profile email')
   .action(async (options) => {
     await ensureConnected();
     const spinner = ora('Fetching tabs...').start();
 
     try {
-      const tabs = await client.sendCommand('listTabs');
+      const tabs = await client.sendCommand('listTabs', { profileId: options.profile });
       spinner.stop();
 
       if (options.pretty) {
-        console.log(chalk.bold('\n📑 Connected Tabs:\n'));
-        tabs.forEach((tab: any, index: number) => {
-          console.log(
-            `${chalk.cyan(index + 1)}. ${chalk.bold(tab.title)}` +
-            `\n   ${chalk.gray(tab.url)}` +
-            `\n   ${tab.active ? chalk.green('● Active') : chalk.gray('○ Inactive')}` +
-            `\n`
-          );
+        // Group tabs by profile
+        const profileGroups = new Map<string, any[]>();
+        tabs.forEach((tab: any) => {
+          const profileName = tab.profileName || 'Unknown Profile';
+          if (!profileGroups.has(profileName)) {
+            profileGroups.set(profileName, []);
+          }
+          profileGroups.get(profileName)!.push(tab);
+        });
+
+        console.log(chalk.bold(`\n📑 Connected Tabs (${tabs.length} total):\n`));
+
+        // Display tabs grouped by profile
+        profileGroups.forEach((profileTabs, profileName) => {
+          console.log(chalk.bold.magenta(`\n🔷 ${profileName} (${profileTabs.length} tabs):`));
+          profileTabs.forEach((tab: any, index: number) => {
+            console.log(
+              `  ${chalk.cyan(index + 1)}. ${chalk.bold(tab.title)}` +
+              `\n     ${chalk.gray(tab.url)}` +
+              `\n     ${tab.active ? chalk.green('● Active') : chalk.gray('○ Inactive')}` +
+              `\n`
+            );
+          });
         });
       } else {
         // Default: JSON output (for AI consumption)

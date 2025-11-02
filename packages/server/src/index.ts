@@ -27,6 +27,7 @@ class DominatrixServer {
   private wss: WebSocketServer;
   private clients: Map<string, Client> = new Map();
   private pendingRequests: Map<string, { resolve: (data: any) => void; reject: (error: any) => void }> = new Map();
+  private tabOwnership: Map<number, string> = new Map(); // tabId -> profileInstanceId
 
   constructor() {
     console.log('🔥 DOMINATRIX Server starting...');
@@ -106,6 +107,12 @@ class DominatrixServer {
   private async handleCliCommand(message: any, cliClient: Client) {
     console.log(`📥 CLI Command: ${message.action}${message.profileId ? ` (profile: ${message.profileId})` : ''}`);
 
+    // Special handling for listTabs - query ALL profiles if no specific profile requested
+    if (message.action === 'listTabs' && !message.profileId) {
+      await this.handleListAllTabs(message, cliClient);
+      return;
+    }
+
     // Find an extension client to handle this command
     const extensionClient = this.findExtensionClient(message.tabId, message.profileId);
 
@@ -131,10 +138,111 @@ class DominatrixServer {
     // This will be handled by handleResponse()
   }
 
+  /**
+   * Handle listTabs command by querying all connected profiles and merging results
+   */
+  private async handleListAllTabs(message: any, cliClient: Client) {
+    const extensionClients = Array.from(this.clients.values()).filter(c => c.type === 'extension');
+
+    if (extensionClients.length === 0) {
+      this.sendError(cliClient.ws, 'No browser extensions connected', { command: message.action });
+      return;
+    }
+
+    console.log(`   → Querying ${extensionClients.length} profile(s)`);
+
+    // Query each profile and collect responses
+    const allTabs: any[] = [];
+    const promises = extensionClients.map(async (client) => {
+      return new Promise<any[]>((resolve, reject) => {
+        const requestId = crypto.randomUUID();
+        const timeout = setTimeout(() => {
+          reject(new Error('Timeout waiting for response'));
+        }, 5000);
+
+        // Store the promise resolver
+        this.pendingRequests.set(requestId, {
+          resolve: (data) => {
+            clearTimeout(timeout);
+            resolve(data);
+          },
+          reject: (error) => {
+            clearTimeout(timeout);
+            reject(error);
+          },
+        });
+
+        // Send request to this profile
+        const profileMessage = {
+          ...message,
+          id: requestId,
+        };
+        client.ws.send(JSON.stringify(profileMessage));
+      });
+    });
+
+    try {
+      // Wait for all profiles to respond
+      const results = await Promise.allSettled(promises);
+
+      // Merge tabs from all profiles and track ownership
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          const tabs = result.value;
+          if (Array.isArray(tabs)) {
+            const client = extensionClients[index];
+            const profileId = client.profile?.instanceId;
+
+            // Track which profile owns which tabs
+            if (profileId) {
+              tabs.forEach((tab: any) => {
+                if (tab.id) {
+                  this.tabOwnership.set(tab.id, profileId);
+                }
+              });
+            }
+
+            allTabs.push(...tabs);
+          }
+        } else {
+          const client = extensionClients[index];
+          console.error(`   ✗ Failed to get tabs from ${client.profile?.profileName || 'unknown'}`);
+        }
+      });
+
+      // Send merged response to CLI
+      const response = {
+        id: crypto.randomUUID(),
+        type: 'response',
+        requestId: message.id,
+        timestamp: Date.now(),
+        success: true,
+        data: allTabs,
+      };
+      cliClient.ws.send(JSON.stringify(response));
+
+      console.log(`   ✓ Merged ${allTabs.length} tabs from ${extensionClients.length} profile(s)`);
+    } catch (error) {
+      this.sendError(cliClient.ws, 'Failed to query all profiles', { error: String(error) });
+    }
+  }
+
   private handleResponse(message: any) {
     console.log(`📤 Response for request: ${message.requestId}`);
 
-    // Find CLI clients and broadcast response
+    // Check if this is a response to a pending request (from handleListAllTabs)
+    const pending = this.pendingRequests.get(message.requestId);
+    if (pending) {
+      this.pendingRequests.delete(message.requestId);
+      if (message.success) {
+        pending.resolve(message.data);
+      } else {
+        pending.reject(new Error(message.error || 'Request failed'));
+      }
+      return;
+    }
+
+    // Otherwise, broadcast to all CLI clients (original behavior)
     for (const client of this.clients.values()) {
       if (client.type === 'cli') {
         client.ws.send(JSON.stringify(message));
@@ -143,7 +251,11 @@ class DominatrixServer {
   }
 
   private handleEvent(message: any, extensionClient: Client) {
-    console.log(`📢 Event: ${message.event}`);
+    // Only log important events (not networkRequest to reduce noise)
+    const importantEvents = ['connected', 'tabCreated', 'tabClosed', 'pageLoad', 'navigationComplete'];
+    if (importantEvents.includes(message.event)) {
+      console.log(`📢 Event: ${message.event}`);
+    }
 
     // If this is a 'connected' event, store the profile info
     if (message.event === 'connected' && message.data?.profile) {
@@ -174,9 +286,19 @@ class DominatrixServer {
       if (client) return client;
     }
 
-    // If tabId specified, we need to query all extensions for that tab
-    // For now, just return the first extension
-    // TODO: Implement tab ownership tracking
+    // If tabId specified, look up which profile owns it
+    if (tabId) {
+      const ownerProfileId = this.tabOwnership.get(tabId);
+      if (ownerProfileId) {
+        const client = extensionClients.find(c => c.profile?.instanceId === ownerProfileId);
+        if (client) {
+          console.log(`   → Auto-routed to ${client.profile?.profileName || ownerProfileId} (owns tab ${tabId})`);
+          return client;
+        }
+      }
+    }
+
+    // Default: return first extension
     return extensionClients[0];
   }
 
