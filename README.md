@@ -174,11 +174,14 @@ dominatrix eval "Array.from(document.querySelectorAll('a')).length" --tab-id 123
 ### Screenshots
 
 ```bash
-# Capture visible viewport
-dominatrix screenshot --save screenshot.png
+# Capture visible viewport (auto-saves as JPG to /tmp/dominatrix-screenshots/)
+dominatrix screenshot --tab-id 123
 
 # Capture full page
-dominatrix screenshot --full --save fullpage.png
+dominatrix screenshot --full --tab-id 123
+
+# Returns JSON with filepath:
+# { "filepath": "/tmp/dominatrix-screenshots/screenshot-{timestamp}.jpg", "message": "Screenshot captured and saved" }
 ```
 
 ### Console & Debugging
