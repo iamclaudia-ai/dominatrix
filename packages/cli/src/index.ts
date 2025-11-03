@@ -210,27 +210,36 @@ program
  */
 program
   .command('screenshot')
-  .description('Capture screenshot of current page')
+  .description('Capture screenshot of current page (auto-saves as JPG)')
   .option('-t, --tab-id <id>', 'Tab ID to target (required for multi-profile)')
   .option('-f, --full', 'Capture full page')
-  .option('--save <path>', 'Save to file')
   .action(async (options) => {
     await ensureConnected();
     const spinner = ora('Capturing screenshot...').start();
 
     try {
       const dataUrl = await client.sendCommand('screenshot', { fullPage: options.full, tabId: options.tabId ? parseInt(options.tabId) : undefined });
-      spinner.succeed(chalk.green('Screenshot captured'));
+      spinner.stop();
 
-      if (options.save) {
-        // Save to file
-        const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, '');
-        const buffer = Buffer.from(base64Data, 'base64');
-        await Bun.write(options.save, buffer);
-        console.log(chalk.green(`\n📸 Saved to: ${options.save}`));
-      } else {
-        console.log(chalk.gray('\nData URL (use --save to write to file)'));
-      }
+      // Auto-save to temp directory as JPG
+      const timestamp = Date.now();
+      const tempDir = '/tmp/dominatrix-screenshots';
+      await Bun.write(`${tempDir}/.keep`, ''); // Ensure directory exists
+      const filename = `screenshot-${timestamp}.jpg`;
+      const filepath = `${tempDir}/${filename}`;
+
+      // Convert PNG data URL to JPG
+      const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+
+      // Write as JPG (Bun will handle the conversion if needed)
+      await Bun.write(filepath, buffer);
+
+      // Return the filepath in JSON format for easy consumption
+      output({
+        filepath,
+        message: 'Screenshot captured and saved'
+      }, true);
     } catch (error) {
       spinner.fail(chalk.red('Screenshot failed'));
       console.error(error);
