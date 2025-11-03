@@ -51,7 +51,7 @@ function output(data: any, json = false) {
 program
   .name('dominatrix')
   .description(chalk.red.bold('🔥 DOMINATRIX') + chalk.gray(' - She owns the DOM'))
-  .version('0.5.0');
+  .version('0.6.0');
 
 /**
  * Tab Management Commands

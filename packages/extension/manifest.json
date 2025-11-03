@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "DOMINATRIX",
-  "version": "0.5.0",
+  "version": "{VERSION}",
   "description": "She sees everything. She controls everything. She owns the DOM.",
   "permissions": [
     "tabs",

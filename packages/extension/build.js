@@ -1,6 +1,6 @@
 /**
  * Build script for DOMINATRIX extension
- * Copies necessary files to dist/
+ * Copies necessary files to dist/ and replaces {VERSION} placeholder
  */
 
 import fs from 'fs';
@@ -10,6 +10,10 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const buildDir = path.join(__dirname, 'build');
 const distDir = path.join(__dirname, 'dist');
+
+// Read version from package.json (single source of truth)
+const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
+const VERSION = packageJson.version;
 
 // Create dist directory
 if (!fs.existsSync(distDir)) {
@@ -26,17 +30,15 @@ for (const file of filesToCopy) {
   }
 }
 
-// Copy manifest.json
-fs.copyFileSync(
-  path.join(__dirname, 'manifest.json'),
-  path.join(distDir, 'manifest.json')
-);
+// Copy manifest.json and replace {VERSION}
+let manifestContent = fs.readFileSync(path.join(__dirname, 'manifest.json'), 'utf8');
+manifestContent = manifestContent.replace(/{VERSION}/g, VERSION);
+fs.writeFileSync(path.join(distDir, 'manifest.json'), manifestContent);
 
-// Copy popup.html
-fs.copyFileSync(
-  path.join(__dirname, 'src', 'popup.html'),
-  path.join(distDir, 'popup.html')
-);
+// Copy popup.html and replace {VERSION}
+let popupContent = fs.readFileSync(path.join(__dirname, 'src', 'popup.html'), 'utf8');
+popupContent = popupContent.replace(/{VERSION}/g, VERSION);
+fs.writeFileSync(path.join(distDir, 'popup.html'), popupContent);
 
 // Copy icons directory
 const iconsDir = path.join(distDir, 'icons');
@@ -58,12 +60,11 @@ for (const size of sizes) {
   }
 }
 
-// Read and display version
-const manifest = JSON.parse(fs.readFileSync(path.join(distDir, 'manifest.json'), 'utf8'));
+// Display build summary
 console.log('');
 console.log('✅ Extension build complete!');
 console.log(`📦 Output: packages/extension/dist/`);
-console.log(`🔢 Version: ${manifest.version}`);
+console.log(`🔢 Version: ${VERSION}`);
 console.log('');
 console.log('To load in Chrome:');
 console.log('  1. Go to chrome://extensions/');
