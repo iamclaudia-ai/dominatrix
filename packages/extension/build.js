@@ -38,31 +38,37 @@ fs.copyFileSync(
   path.join(distDir, 'popup.html')
 );
 
-// Create icons directory
+// Copy icons directory
 const iconsDir = path.join(distDir, 'icons');
+const srcIconsDir = path.join(__dirname, 'icons');
 if (!fs.existsSync(iconsDir)) {
   fs.mkdirSync(iconsDir, { recursive: true });
 }
 
-// Create placeholder icons (we'll make real ones later)
+// Copy icon files
 const sizes = [16, 32, 48, 128];
 for (const size of sizes) {
-  const iconPath = path.join(iconsDir, `icon${size}.png`);
-  if (!fs.existsSync(iconPath)) {
-    // Create a simple SVG placeholder and note for later
-    console.log(`⚠️  TODO: Create icon${size}.png (placeholder created)`);
-    fs.writeFileSync(
-      path.join(iconsDir, `icon${size}.txt`),
-      `Placeholder for ${size}x${size} icon. TODO: Create actual PNG icon.`
-    );
+  const srcIconPath = path.join(srcIconsDir, `icon${size}.png`);
+  const destIconPath = path.join(iconsDir, `icon${size}.png`);
+  if (fs.existsSync(srcIconPath)) {
+    fs.copyFileSync(srcIconPath, destIconPath);
+    console.log(`✅ Copied icon${size}.png`);
+  } else {
+    console.log(`⚠️  Warning: icon${size}.png not found in source`);
   }
 }
 
+// Read and display version
+const manifest = JSON.parse(fs.readFileSync(path.join(distDir, 'manifest.json'), 'utf8'));
+console.log('');
 console.log('✅ Extension build complete!');
-console.log('📦 Output: packages/extension/dist/');
+console.log(`📦 Output: packages/extension/dist/`);
+console.log(`🔢 Version: ${manifest.version}`);
 console.log('');
 console.log('To load in Chrome:');
 console.log('  1. Go to chrome://extensions/');
 console.log('  2. Enable "Developer mode"');
 console.log('  3. Click "Load unpacked"');
 console.log('  4. Select the dist/ directory');
+console.log('');
+console.log('💡 Remember to reload the extension in Chrome to see changes!');
