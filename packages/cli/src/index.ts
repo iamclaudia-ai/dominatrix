@@ -539,22 +539,15 @@ program
   .command('html [selector]')
   .description('Get HTML of element or whole page')
   .option('-t, --tab-id <id>', 'Tab ID to target (required for multi-profile)')
-  .option('--pretty', 'Output formatted text instead of JSON')
   .action(async (selector, options) => {
     await ensureConnected();
     const spinner = ora('Fetching HTML...').start();
 
     try {
-      const html = await client.sendCommand('getHTML', { selector, tabId: options.tabId ? parseInt(options.tabId) : undefined });
+      const result = await client.sendCommand('getHTML', { selector, tabId: options.tabId ? parseInt(options.tabId) : undefined });
       spinner.stop();
 
-      if (options.pretty) {
-        console.log(chalk.bold('\n📄 HTML:\n'));
-        console.log(html);
-      } else {
-        // Default: JSON output (for AI consumption)
-        output({ html }, true);
-      }
+      console.log(result.data);
     } catch (error) {
       spinner.fail(chalk.red('Failed to fetch HTML'));
       console.error(error);
@@ -576,11 +569,10 @@ program
     const spinner = ora('Fetching text...').start();
 
     try {
-      const text = await client.sendCommand('getText', { tabId: options.tabId ? parseInt(options.tabId) : undefined });
+      const result = await client.sendCommand('getText', { tabId: options.tabId ? parseInt(options.tabId) : undefined });
       spinner.stop();
 
-      // Always output as JSON for token efficiency
-      output({ text }, true);
+      console.log(result.data);
     } catch (error) {
       spinner.fail(chalk.red('Failed to fetch text'));
       console.error(error);
@@ -602,11 +594,10 @@ program
     const spinner = ora('Converting to Markdown...').start();
 
     try {
-      const markdown = await client.sendCommand('getMarkdown', { tabId: options.tabId ? parseInt(options.tabId) : undefined });
+      const result = await client.sendCommand('getMarkdown', { tabId: options.tabId ? parseInt(options.tabId) : undefined });
       spinner.stop();
 
-      // Always output as JSON for token efficiency
-      output({ markdown }, true);
+      console.log(result.data)
     } catch (error) {
       spinner.fail(chalk.red('Failed to convert to Markdown'));
       console.error(error);
