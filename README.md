@@ -29,18 +29,18 @@ DOMINATRIX is a **lightweight, powerful Chrome extension + CLI tool** that gives
 ## 🎯 The Problem DOMINATRIX Solves
 
 ### chrome-devtools-mcp Issues:
-- ❌ **Heavy MCP overhead** - 22.7k tokens just to load the MCP
+- ❌ **Heavy MCP overhead** - 16k tokens just to load the MCP
 - ❌ **Separate browser process** - Not in your Cmd+` window list
 - ❌ **Isolated test profile** - Constant re-logging required
 - ❌ **CSP limitations** - Can't execute JavaScript on protected pages
 - ❌ **Single profile** - No multi-profile support
 
 ### DOMINATRIX Solution:
-- ✅ **Lightweight** - 6k tokens for essential MCPs, rest is pure CLI
+- ✅ **Lightweight** - 286 tokens for basic instructions, rest is pure CLI
 - ✅ **Real browser** - Works with your actual Chrome windows
 - ✅ **Multi-profile** - Control tabs across ALL your Chrome profiles
 - ✅ **CSP bypass** - [JailJS](https://github.com/badlogic/jailjs) integration executes JavaScript anywhere
-- ✅ **Token-efficient** - Text & Markdown extraction commands
+- ✅ **Token-efficient** - Text & Markdown extraction commands, and screenshots converted to JPG
 
 ---
 
